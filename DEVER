@@ -1,0 +1,55 @@
+CREATE TABLE contas (
+    id INT PRIMARY KEY,
+    cliente_id INT,
+    tipo VARCHAR(3), -- 'CHK' para conta corrente
+    saldo DECIMAL(10,2)
+);
+
+
+
+
+
+
+
+
+
+DELIMITER $$
+
+CREATE PROCEDURE TransferirCHK(
+    IN clienteOrigem INT,
+    IN clienteDestino INT,
+    IN valor DECIMAL(10,2)
+)
+BEGIN
+    DECLARE contaOrigemId INT;
+    DECLARE contaDestinoId INT;
+    DECLARE saldoOrigem DECIMAL(10,2);
+
+    -- Obter IDs das contas correntes (CHK)
+    SELECT id, saldo INTO contaOrigemId, saldoOrigem
+    FROM contas
+    WHERE cliente_id = clienteOrigem AND tipo = 'CHK'
+    LIMIT 1;
+
+    SELECT id INTO contaDestinoId
+    FROM contas
+    WHERE cliente_id = clienteDestino AND tipo = 'CHK'
+    LIMIT 1;
+
+    -- Verifica se tem saldo suficiente
+    IF saldoOrigem < valor THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Saldo insuficiente na conta de origem.';
+    END IF;
+
+    -- Atualiza os saldos
+    UPDATE contas
+    SET saldo = saldo - valor
+    WHERE id = contaOrigemId;
+
+    UPDATE contas
+    SET saldo = saldo + valor
+    WHERE id = contaDestinoId;
+END$$
+
+DELIMITER ;
